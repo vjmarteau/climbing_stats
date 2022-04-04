@@ -1,0 +1,58 @@
+---
+title: "01-Data_exploration"
+author: "Valentin Marteau"
+params:
+  data: "../data"
+  results:  "../results"
+  lib:  "../lib"
+  maxcores: 6
+output:
+  html_notebook:
+    theme: spacelab
+    highlight: textmate
+    toc: yes
+    number_sections: true
+    toc_depth: 3
+    toc_float: true
+---
+
+```{r, results = "hide"}
+# Load required packages
+library(tidyverse)
+library(lubridate)
+
+# Set ggplot basic theme
+theme_set(
+  theme(panel.grid = element_blank(),
+        axis.line = element_line(),
+        panel.background = element_blank(),
+        panel.border = element_blank(),
+        panel.grid.minor = element_line(linetype = "dotted"))
+  )
+```
+
+# Let's have a look at the training data
+```{r}
+# Read raw data into memory
+raw <- read_csv(file = file.path(params$data, "2022.03-KI_climbing_data.csv"))
+
+dat <- raw |>
+  mutate_at(vars(-c("date", "time_start", "time_end", "Comments")), factor) |>
+  mutate(date = dmy(date))
+```
+
+### Number of red pointed routes within each specific grade
+```{r}
+dat |>
+  filter(topped_out == "yes") |>
+  select(grade, person) |>
+  ggplot() + aes(grade, fill = person) + 
+  geom_bar(position = 'dodge')
+```
+```{r}
+dat |>
+  filter(topped_out == "no") |>
+  select(grade, person) |>
+  ggplot() + aes(grade, fill = person) + 
+  geom_bar(position = 'dodge')
+```
