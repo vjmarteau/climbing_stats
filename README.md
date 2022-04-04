@@ -5,4 +5,4 @@ A couple of month ago I started recording information about all of my climbing a
 Even though the analyses will probably work for every climbing gym, it requires a way of discriminating the different routes in some way.
 Currently, the analysis will therefore only work for my [specific gym](https://www.kletterzentrum-innsbruck.at/en/) which uses numbers, colors, and grades.
 
-Hopefully, as the dataset gets bigger I will be able to improve on what to take notes on to get even better insight into my climbing.
+Hopefully, as the dataset gets bigger I will be able to improve on what to take notes on to get even better insights into my climbing.
