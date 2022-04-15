@@ -20,6 +20,12 @@ output:
 # Load required packages
 library(tidyverse)
 library(lubridate)
+library(pdftools)
+
+# load custom functions
+## Once I understand better how to match expressions I should use extract()
+source(file.path(params$lib, "pdf_to_tibble.R"))
+source(file.path(params$lib, "get_current_routes.R"))
 
 # Set ggplot basic theme
 theme_set(
@@ -36,11 +42,57 @@ theme_set(
 # Read raw data into memory
 raw <- read_csv(file = file.path(params$data, "2022.03-KI_climbing_data.csv"))
 
-dat <- raw |>
-  mutate_at(vars(-c("date", "time_start", "time_end", "Comments")), factor) |>
-  mutate(date = dmy(date))
+# Import metadata from pdf
+metadata <- pdf_to_tibble(params$data)
+
+# Remove old climbing routes
+data <- get_current_routes(raw, metadata)
+
+metadata <- metadata |>
+  unite(id, c("Linie", "Schwierigkeitsgrad"), remove = FALSE) |>
+  select(-txt) 
 ```
 
+## Stats Lilian / Valentin
+```{r}
+red_point_Lilian <- data |>
+  filter(person == "Lilian") |>
+  filter(topped_out == "yes") |>
+  unite(id, c("route_number", "grade"), remove = FALSE)
+
+red_point_Valentin <- data |>
+  filter(person == "Valentin") |>
+  filter(topped_out == "yes") |>
+  unite(id, c("route_number", "grade"), remove = FALSE)
+
+# Remove Routes climbed more than once
+#red_point_Lilian |>
+#  distinct(id, .keep_all = TRUE)
+
+missing_Lilian <- metadata |>
+  filter(!metadata$id %in% red_point_Lilian$id) |>
+  filter(!Schwierigkeitsgrad %in% c("5b", "5b+", "5c")) |>
+  select(Linie, Schwierigkeitsgrad, Sektor, Routensetzer)
+
+missing_Valentin <- metadata |>
+  filter(!metadata$id %in% red_point_Valentin$id) |>
+  filter(!Schwierigkeitsgrad %in% c("5b", "5b+", "5c")) |>
+  select(Linie, Schwierigkeitsgrad, Sektor, Routensetzer)
+
+write_csv(missing_Lilian, file = file.path(params$results, "KI_missing_Lilian.csv"))
+write_csv(missing_Valentin, file = file.path(params$results, "KI_missing_Valentin.csv"))
+```
+# Plot number of missing routes within each specific grade, colour by sector
+```{r}
+missing_Lilian |>
+  ggplot() + aes(Schwierigkeitsgrad, fill = Sektor) + 
+  geom_bar() # position = 'dodge'
+```
+```{r}
+missing_Valentin |>
+  ggplot() + aes(Schwierigkeitsgrad, fill = Sektor) + 
+  geom_bar() # position = 'dodge'
+```
 ### Number of red pointed routes within each specific grade
 ```{r}
 dat |>
