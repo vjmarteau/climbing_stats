@@ -1,0 +1,117 @@
+---
+title: "02-Webscrape_Ki_route_db"
+author: "Valentin Marteau"
+params:
+  data: "../data"
+  results:  "../results"
+  lib:  "../lib"
+  maxcores: 6
+output:
+  html_notebook:
+    theme: spacelab
+    highlight: textmate
+    toc: yes
+    number_sections: true
+    toc_depth: 3
+    toc_float: true
+---
+
+# Set up Selenium using Docker
+Need to download and set up a [Docker Selenium image](https://github.com/SeleniumHQ/docker-selenium)
+```{bash, engine.opts='-l'}
+# For example:
+docker run -d -p 4444:4444 --shm-size="2g" selenium/standalone-firefox:4.1.4-20220427 # If port 4444 is not available try 4445 (can happen on macos)
+# Check if image is running
+docker ps
+# To stop docker
+#docker kill "CONTAINER ID"
+```
+```{r, results = "hide"}
+# Load required packages
+library(RSelenium)
+library(rvest)
+library(tidyverse)
+```
+# Access selenium browser using RSelenium
+Need to use the same port as specified in the docker image!
+```{r}
+remDr <- RSelenium::remoteDriver(remoteServerAddr = "localhost",
+                                 port = 4444L,
+                                 browserName = "firefox")
+# Connect to the server
+remDr$open()
+
+# Navigate to url of interest
+remDr$navigate("https://www.kletterzentrum-innsbruck.at/index.php?id=235&no_cache=1")
+# remDr$screenshot(display = TRUE) #This will take a screenshot and display it in the RStudio viewer
+
+# Define worker function
+scrape_table <- function(html){
+  read_html(html) |>
+  html_table(fill = T) |>
+  pluck(3)
+}
+
+# Iterate over table content, applying the function each time and clicking the "Next" button
+df <- tibble()
+
+for(i in 1:11) {
+  df_sub <- scrape_table(remDr$getPageSource()[[1]])
+  remDr$findElement('xpath', '//*[@id="climbingRoutes_next"]')$sendKeysToElement(list(key="enter"))
+  Sys.sleep(1)
+  df <- bind_rows(df, df_sub)
+}
+
+write_csv(df, file = file.path(params$results, "KI_Routendatenbank.csv"))
+```
+
+# References and code snippets for later use
+As it took some time to work this out, below you will find a loose collection of hopefully helpfull references and code snippets.
+
+Given the time I would also like to improve the above code to include a while statement (right now I had to manually set the pagination number to 11 but this will probably change!; See https://stackoverflow.com/questions/57657829/how-to-extract-the-inherent-links-from-the-webpage-with-my-code-error-subscrip, https://stackoverflow.com/questions/40366291/how-to-check-if-an-element-is-present-in-the-webpage-using-rselenium). In addition, I am sure there is a better way to loop over the "refreshed" pages (e.g. https://community.rstudio.com/t/scraping-multiple-web-pages-with-rvest-and-for-loop/89661)
+I would like to scrape the colours.
+
+The [official vignettes](https://cran.r-project.org/web/packages/RSelenium/index.html) is also really helpful!
+
+Some other example code: https://tagmerge.com/question/r-how-to-web-scrap-data-from-stocktwits-with-rselenium
+https://callumgwtaylor.github.io/post/using-rselenium-and-docker-to-webscrape-in-r-using-the-who-snake-database/
+http://joshuamccrain.com/tutorials/web_scraping_R_selenium.html
+
+```{r}
+# Usefull code to find stuff using xpath (https://tutorialmeta.com/question/error-using-findelement-function-in-rselenium-struggling-to-select-a-text-box-a, https://www.w3schools.com/xml/xpath_syntax.asp)
+remDr$navigate("https://trakcarelabwebview.nhls.ac.za/trakcarelab/csp/system.Home.cls#/Component/SSUser.Logon")
+
+remDr$findElement('xpath', '//*[@id="SSUser_Logon_0-item-USERNAME"]')$sendKeysToElement(list("myusername"))
+remDr$findElement('xpath', '//*[@id="SSUser_Logon_0-item-PASSWORD"]')$sendKeysToElement(list("password"))
+
+remDr$findElement('xpath', '//*[@id="SSUser_Logon_0-button-Logon"]/span')$clickElement()
+
+# Check if I slect element I want to click
+webElem <- remDr$findElement('xpath', '//*[@id="climbingRoutes_next"]')
+webElem$getElementAttribute("class")
+
+# Extract html with Selenium + rvest
+html <- read_html(remDr$getPageSource()[[1]])
+
+# When having trouble "clicking", there are 3 options I am aware of (https://stackoverflow.com/questions/26725406/rselenium-radio-button-click-doesnt-seem-to-be-working)
+webElem$clickElement()
+webElem$sendKeysToElement(list(key="enter"))
+remDr$executeScript("document.getElementById('#climbingRoutes_next').click()")
+```
+
+```{r}
+# Try to use a while statement ...
+url <- "https://www.kletterzentrum-innsbruck.at/index.php?id=235&no_cache=1"
+  remDr$navigate(url)
+  Sys.sleep(3)
+  if(length(remDr$findElement('xpath', '//*[@id="climbingRoutes_next"]'))!=0){
+    while(remDr$findElement('xpath', '//*[@id="climbingRoutes_next"]')$isElementDisplayed()[[1]]){
+      tryCatch({
+      Sys.sleep(1)
+      webElem <- remDr$findElement('xpath', '//*[@id="climbingRoutes_next"]')
+      webElem$sendKeysToElement(list(key="enter"))
+      }, error=function(e){})
+    }
+  }
+  mb<- read_html(remDr$getPageSource()[[1]])
+```
