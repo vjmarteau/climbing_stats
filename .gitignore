@@ -1,3 +1,5 @@
+.secrets
+commit_message_template.txt
 analysis/*.nb.html
 .DS_Store
 climbing_stats.Rproj
