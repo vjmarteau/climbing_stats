@@ -17,7 +17,7 @@ output:
 ---
 
 # Set up Selenium using Docker
-Need to download and set up a [Docker Selenium image](https://github.com/SeleniumHQ/docker-selenium)
+Need to download and set up a [Docker Selenium image](https://github.com/SeleniumHQ/docker-selenium), start the docker deamon and run:
 ```{bash, engine.opts='-l'}
 # For example:
 docker run -d -p 4444:4444 --shm-size="2g" selenium/standalone-firefox:4.1.4-20220427 # If port 4444 is not available try 4445 (can happen on macos)
@@ -62,7 +62,7 @@ for(i in 1:11) {
   df <- bind_rows(df, df_sub)
 }
 
-write_csv(df, file = file.path(params$results, "KI_Routendatenbank.csv"))
+write_csv(df, file = file.path(params$results, paste0(lubridate::today(), "-KI_Routendatenbank.csv") ))
 ```
 
 # References and code snippets for later use
