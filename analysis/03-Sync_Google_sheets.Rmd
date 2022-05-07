@@ -1,0 +1,63 @@
+---
+title: "03-Sync_Google_sheets"
+author: "Valentin Marteau"
+params:
+  data: "../data"
+  results:  "../results"
+  lib:  "../lib"
+  maxcores: 6
+output:
+  html_notebook:
+    theme: spacelab
+    highlight: textmate
+    toc: yes
+    number_sections: true
+    toc_depth: 3
+    toc_float: true
+---
+
+```{r, results = "hide"}
+# Load required packages
+library(tidyverse)
+library(lubridate)
+library(googlesheets4)
+
+source(file.path(params$lib, "update_todo_routes.R"))
+```
+# Authorize google-sheets access
+First time, create ".secrets" dir with access token in main dir and authorize process in pop-up window. (See: https://debruine.github.io/shinyintro/data.html) 
+```{r}
+# Create ".secrets" dir using "drive_auth"
+#googledrive::drive_auth(email = "valentinmarteau7@gmail.com", cache = "../.secrets")
+```
+
+# Get data from google-sheets
+```{r}
+# Authorize google-sheets access using token in .secrets/ and mail
+googlesheets4::gs4_auth(cache = "../.secrets", email = "valentinmarteau7@gmail.com")
+
+# Read KI_Routendatenbank into memory
+files <- dir(params$results, pattern = "*KI_Routendatenbank.csv")
+
+# At some point I might want to remove old routes! have to see how Ki-db is updated.
+meta <- files |>
+  purrr::map_dfr(~ read_csv(file.path(params$results, .))) |>
+  distinct() |>
+  unite(id, c("Linie", "Schwierigkeitsgrad"), remove = FALSE) |>
+  rename("date_route_set" = "Gebaut am")
+
+# Google sheets data
+sheet_url <- "https://docs.google.com/spreadsheets/d/1jwPE_idDkNwxNdJSv90Nw9nVB06rnAfQvLnG2TD-Zrg/edit#gid=0"
+sheets_df <- read_sheet(ss = sheet_url, col_types = "c",
+                        sheet = "Main")
+
+sheets_df <- sheets_df |>
+  mutate(date = dmy(date)) |>
+  #mutate(across(starts_with("time"), hm)) |> # Does not seem to work well with NAs ...
+  mutate_at(vars(-c("date", "time_start", "time_end", "route_number", "Comments")), factor) |>
+  mutate(route_number = parse_number(route_number)) |>
+  arrange(route_number) |>
+  unite(id, c("route_number", "grade"), remove = FALSE)
+
+sapply(list("Lilian", "Valentin"), function(i) update_todo_routes(sheets = sheets_df, metadata = meta, person = i, URL = sheet_url) )
+```
