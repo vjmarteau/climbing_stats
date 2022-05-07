@@ -22,11 +22,6 @@ library(tidyverse)
 library(lubridate)
 library(pdftools)
 
-# load custom functions
-## Once I understand better how to match expressions I should use extract()
-source(file.path(params$lib, "pdf_to_tibble.R"))
-source(file.path(params$lib, "get_current_routes.R"))
-
 # Set ggplot basic theme
 theme_set(
   theme(panel.grid = element_blank(),
@@ -39,18 +34,17 @@ theme_set(
 
 # Let's have a look at the training data
 ```{r}
-# Read raw data into memory
-raw <- read_csv(file = file.path(params$data, "2022.03-KI_climbing_data.csv"))
+files <- dir(paste(params$results, "produced_data", sep = "/"), pattern = "*.rds")
+df <- sapply(files, function(i) read_rds(file.path(paste(params$results, "produced_data", i, sep = "/"))) )
 
-# Import metadata from pdf
-metadata <- pdf_to_tibble(params$data)
+# Unlist and name by list names
+#lapply(names(df), function(x) assign(x, df[[x]], .GlobalEnv))
 
-# Remove old climbing routes
-data <- get_current_routes(raw, metadata)
+Routendatenbank <- df |>
+  pluck(1)
 
-metadata <- metadata |>
-  unite(id, c("Linie", "Schwierigkeitsgrad"), remove = FALSE) |>
-  select(-txt) 
+sheets <- df |>
+  pluck(2)
 ```
 
 ## Stats Lilian / Valentin
@@ -78,9 +72,6 @@ missing_Valentin <- metadata |>
   filter(!metadata$id %in% red_point_Valentin$id) |>
   filter(!Schwierigkeitsgrad %in% c("5b", "5b+", "5c")) |>
   select(Linie, Schwierigkeitsgrad, Sektor, Routensetzer)
-
-write_csv(missing_Lilian, file = file.path(params$results, "KI_missing_Lilian.csv"))
-write_csv(missing_Valentin, file = file.path(params$results, "KI_missing_Valentin.csv"))
 ```
 # Plot number of missing routes within each specific grade, colour by sector
 ```{r}

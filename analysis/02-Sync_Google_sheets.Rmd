@@ -37,14 +37,15 @@ First time, create ".secrets" dir with access token in main dir and authorize pr
 googlesheets4::gs4_auth(cache = "../.secrets", email = "valentinmarteau7@gmail.com")
 
 # Read KI_Routendatenbank into memory
-files <- dir(params$results, pattern = "*KI_Routendatenbank.csv")
+files <- dir(params$data, pattern = "*KI_Routendatenbank.csv")
 
 # At some point I might want to remove old routes! have to see how Ki-db is updated.
 meta <- files |>
-  purrr::map_dfr(~ read_csv(file.path(params$results, .))) |>
+  purrr::map_dfr(~ read_csv(file.path(params$data, .))) |>
   distinct() |>
   unite(id, c("Linie", "Schwierigkeitsgrad"), remove = FALSE) |>
-  rename("date_route_set" = "Gebaut am")
+  rename("date_route_set" = "Gebaut am") |>
+  arrange(date_route_set)
 
 # Google sheets data
 sheet_url <- "https://docs.google.com/spreadsheets/d/1jwPE_idDkNwxNdJSv90Nw9nVB06rnAfQvLnG2TD-Zrg/edit#gid=0"
@@ -57,7 +58,24 @@ sheets_df <- sheets_df |>
   mutate_at(vars(-c("date", "time_start", "time_end", "route_number", "Comments")), factor) |>
   mutate(route_number = parse_number(route_number)) |>
   arrange(route_number) |>
-  unite(id, c("route_number", "grade"), remove = FALSE)
+  unite(id, c("route_number", "grade"), remove = FALSE) |>
+  select(-id)
 
+# Update sheets to_do
 sapply(list("Lilian", "Valentin"), function(i) update_todo_routes(sheets = sheets_df, metadata = meta, person = i, URL = sheet_url) )
+```
+```{r}
+# Save current sheets data and Routendatenbank as .rds files
+write_rds(sheets_df, file = file.path(paste(params$results, "produced_data", sep = "/"),
+                                      paste0(lubridate::today(), "-sheets_main.rds")))
+
+write_rds(meta, file = file.path(paste(params$results, "produced_data", sep = "/"),
+                                      paste0(lubridate::today(), "-Ki_Routendatenbank.rds")))
+```
+```{r}
+# Super cool! Save subsets of df separately by e.g. column id (in this example by person)!
+sheets_df |>
+  group_by(person) |>
+  group_walk(~ write_csv(.x, file.path(paste(params$results, "produced_data", sep = "/"),
+                                      paste0(lubridate::today(), "-", .y$person, ".csv")) ))
 ```

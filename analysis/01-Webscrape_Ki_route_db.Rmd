@@ -62,7 +62,7 @@ for(i in 1:11) {
   df <- bind_rows(df, df_sub)
 }
 
-write_csv(df, file = file.path(params$results, paste0(lubridate::today(), "-KI_Routendatenbank.csv") ))
+write_csv(df, file = file.path(params$data, paste0(lubridate::today(), "-KI_Routendatenbank.csv") ))
 ```
 
 # References and code snippets for later use
