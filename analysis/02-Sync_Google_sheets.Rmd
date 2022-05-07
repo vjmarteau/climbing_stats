@@ -58,8 +58,7 @@ sheets_df <- sheets_df |>
   mutate_at(vars(-c("date", "time_start", "time_end", "route_number", "Comments")), factor) |>
   mutate(route_number = parse_number(route_number)) |>
   arrange(route_number) |>
-  unite(id, c("route_number", "grade"), remove = FALSE) |>
-  select(-id)
+  unite(id, c("route_number", "grade"), remove = FALSE)
 
 # Update sheets to_do
 sapply(list("Lilian", "Valentin"), function(i) update_todo_routes(sheets = sheets_df, metadata = meta, person = i, URL = sheet_url) )
