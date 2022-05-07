@@ -1,5 +1,5 @@
 ---
-title: "03-Sync_Google_sheets"
+title: "02-Sync_Google_sheets"
 author: "Valentin Marteau"
 params:
   data: "../data"
