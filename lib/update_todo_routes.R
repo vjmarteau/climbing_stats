@@ -23,7 +23,7 @@ attempted <- latest |>
   mutate(attempts = n_distinct(date)) |>
   select(id, date, attempts) |>
   filter(date == max(date)) |>
-  mutate(attempts = na_if(attempts, 1L))
+  distinct()
 
 # Exlude too easy/hard routes
 missing <- meta |>
@@ -34,17 +34,8 @@ missing <- meta |>
 # Add column with date of last_attempt
 to_do <- left_join(missing, attempted, by = "id") |>
   select(Linie, Schwierigkeitsgrad, Ki_colour, date, attempts, Sektor, Routensetzer) |>
-  rename("last_attempt" = "date", "Farbe" = "Ki_colour")
-
-# Append number of attempts == 1
-to_do1 <- to_do |>
-  filter(!is.na(last_attempt)) |>
-  mutate(attempts = replace_na(attempts, 1L))
-to_do2 <- to_do |>
-  filter(is.na(last_attempt))
-
-to_do <- bind_rows(to_do1, to_do2) |>
-  arrange(Schwierigkeitsgrad, Linie)
+  rename("last_attempt" = "date", "Farbe" = "Ki_colour") |>
+  arrange(Linie, Schwierigkeitsgrad)
 
 # Write to_do routes to google sheets
 sheet_write(data = to_do, ss = URL,
