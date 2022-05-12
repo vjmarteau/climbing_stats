@@ -54,7 +54,7 @@ df_table <- html |>
   pluck(3)
 
 df_col <- bind_cols(Ki_ID = html |> html_elements("tr") |> html_attr("id"),
-                    Ki_colour = html |> html_elements("tr") |>
+                    Farbe = html |> html_elements("tr") |>
                       html_attr("class") |>
                       str_remove("[[:space:]].*") |>
                       str_remove("pCColor")) |>
@@ -68,10 +68,24 @@ df <- tibble()
 
 for(i in 1:11) {
   df_sub <- scrape_table(remDr$getPageSource()[[1]])
-  remDr$findElement('xpath', '//*[@id="climbingRoutes_next"]')$sendKeysToElement(list(key="enter"))
+  remDr$findElement('xpath', '//*[@id="climbingRoutes_next"]')$sendKeysToElement(list(key = "enter"))
   Sys.sleep(1)
   df <- bind_rows(df, df_sub)
 }
+
+# Tidy table
+df <- df |>
+  mutate(Farbe = recode(Farbe, Black = "schwarz", Blue = "blau", Brown = "braun", Green = "grün", Orange = "orange", Pink = "pink",
+                        Purple = "lila", Red = "rot", White = "weiß", Yellow = "gelb",
+                        .default = NA_character_)) |>
+  mutate(across(where(is.character), str_replace_all, pattern = " ", replacement = "_")) |>
+  mutate(Routensetzer = map_chr(Routensetzer, ~str_remove(.x, pattern = "/"))) |>
+  mutate(Routensetzer = map_chr(Routensetzer, ~str_replace(.x, pattern = "__", replacement = "_"))) |>
+  relocate(Ki_ID) |>
+  relocate(Farbe, .after = Schwierigkeitsgrad) |>
+  rename("Gebaut_am" = "Gebaut am") |>
+  mutate_at(vars(Schwierigkeitsgrad), list(factor)) |>
+  arrange(desc(Gebaut_am), Linie, Schwierigkeitsgrad)
 
 write_csv(df, file = file.path(params$data, paste0(lubridate::today(), "-KI_Routendatenbank.csv") ))
 ```
