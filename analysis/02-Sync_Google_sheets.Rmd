@@ -31,21 +31,20 @@ First time, create ".secrets" dir with access token in main dir and authorize pr
 #googledrive::drive_auth(email = "valentinmarteau7@gmail.com", cache = "../.secrets")
 ```
 
-# Get data from google-sheets
+# Get data from google-sheets + Ki Routendatenbank from web-scraping
 ```{r}
-# Authorize google-sheets access using token in .secrets/ and mail
-googlesheets4::gs4_auth(cache = "../.secrets", email = "valentinmarteau7@gmail.com")
-
 # Read KI_Routendatenbank into memory
 files <- dir(params$data, pattern = "*KI_Routendatenbank.csv")
 
 # At some point I might want to remove old routes! have to see how Ki-db is updated.
 meta <- files |>
   purrr::map_dfr(~ read_csv(file.path(params$data, .))) |>
-  distinct() |>
-  unite(id, c("Linie", "Schwierigkeitsgrad"), remove = FALSE) |>
-  rename("date_route_set" = "Gebaut am") |>
-  arrange(date_route_set)
+  unite(id, c("Linie", "Schwierigkeitsgrad", "Farbe"), remove = FALSE) |>
+  distinct(id, .keep_all = TRUE) |>
+  mutate_at(vars(-c("Linie", "Gebaut_am", "id")), factor)
+
+# Authorize google-sheets access using token in .secrets/ and mail
+googlesheets4::gs4_auth(cache = "../.secrets", email = "valentinmarteau7@gmail.com")
 
 # Google sheets data
 sheet_url <- "https://docs.google.com/spreadsheets/d/1jwPE_idDkNwxNdJSv90Nw9nVB06rnAfQvLnG2TD-Zrg/edit#gid=0"
@@ -57,11 +56,10 @@ sheets_df <- sheets_df |>
   #mutate(across(starts_with("time"), hm)) |> # Does not seem to work well with NAs ...
   mutate_at(vars(-c("date", "time_start", "time_end", "route_number", "Comments")), factor) |>
   mutate(route_number = parse_number(route_number)) |>
-  arrange(route_number) |>
-  unite(id, c("route_number", "grade"), remove = FALSE)
+  unite(id, c("route_number", "grade", "colour"), remove = FALSE)
 
 # Update sheets to_do
-sapply(list("Lilian", "Valentin"), function(i) update_todo_routes(sheets = sheets_df, metadata = meta, person = i, URL = sheet_url) )
+sapply(list("Lilian", "Valentin"), function(i) update_todo_routes(sheets = sheets_df, metadata = meta, climber = i, URL = sheet_url) )
 ```
 ```{r}
 # Save current sheets data and Routendatenbank as .rds files
